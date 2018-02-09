@@ -40,4 +40,3 @@ chisq_a = utils.chi2(utils.parabola(
                         ds)
 
 chisq_b = utils.chi2([proposed_new_step_b], [b_init])
-chisq_a
