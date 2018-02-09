@@ -29,6 +29,7 @@ plt.show(block=False)
 
 # Start the actual MCMC
 # Set initial walker positions:
+"""
 a_init, b_init = 1, 2
 sig_a, sig_b = 3, 3
 proposed_new_step_a = np.random.normal(loc=a_init, scale=sig_a)
@@ -60,31 +61,57 @@ else:
     else:
         # accept
 
+"""
+
+sig = [1, 1]
 nsteps = 100
-position = [[1,1]]
+position = [[1, 1]]
 for i in range(nsteps):
 
     # Randomly choose which parameter to move
     # Use this as an index for the positions list
     p = r.randint(2)
-    p_other = 1 if p==0 else 0
+    p_other = 1 if p == 0 else 0
 
     # Propose a new step
     new_pos = np.random.normal(loc=position[-1][p], scale=sig[p])
 
-
-
-
     # Calcualte Chi-Squared for new step, store it
+    chisq_old = utils.chi2(
+                    utils.parabola(xs, position[-1][p], position[-1][p_other]),
+                    ds)
 
-    chisq_a_old = utils.chi2(
-                    utils.parabola(xs, new_pos, pos[-1][p_other]), ds)
+    chisq_new = utils.chi2(
+                    utils.parabola(xs, new_pos, position[-1][p_other]),
+                    ds)
 
     # If chi2_new < chi2_old, accept.
-    # Else, generate a random number in [0,1]
+    if chisq_new > chisq_old:
+        # This can probably be made shorter.
+        new_position = []
+        new_position[p] = new_pos
+        new_position[p_other] = position[-1][p_other]
+        position.append(new_position)
 
-    # If exp(-chi2_new/2) < random, reject
-    # Else, accept
+    # Else, generate a random number in [0,1]
+    else:
+        r_num = r.random()
+        # Is this order right?
+        delta_chisq = chisq_new - chisq_old
+        ex = np.exp(-(delta_chisq)/2)
+
+        # If exp(-chi2_new/2) < random, reject
+        if ex < r_num:
+            position.append(position[-1])
+
+        # Else, accept
+        else:
+            new_position = []
+            new_position[p] = new_pos
+            new_position[p_other] = position[-1][p_other]
+            position.append(new_position)
+
+
 
 
 
