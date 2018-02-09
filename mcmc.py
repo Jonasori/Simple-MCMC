@@ -1,6 +1,0 @@
-"""
-Basic MCMC
-"""
-
-
-# The End
