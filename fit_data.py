@@ -28,88 +28,71 @@ plt.show(block=False)
 
 
 # Start the actual MCMC
-# Set initial walker positions:
-"""
-a_init, b_init = 1, 2
-sig_a, sig_b = 3, 3
-proposed_new_step_a = np.random.normal(loc=a_init, scale=sig_a)
-proposed_new_step_b = np.random.normal(loc=b_init, scale=sig_b)
 
-
-chisq_a_old = utils.chi2(utils.parabola(
-                        xs,
-                        proposed_new_step_a,
-                        b_init),
-                        ds)
-
-chisq_a_new = utils.chi2(utils.parabola(
-                        xs,
-                        proposed_new_step_a,
-                        b_init),
-                        ds)
-
-
-if chisq_a_new < chisq_a_old:
-    #accept
-    blah = 1
-
-else:
-    accept_metric_a = np.exp(-chisq_a)
-    random_test_range = np.random.random()
-    if accept_metric_a < random_test_range:
-        # reject
-    else:
-        # accept
-
-"""
 
 sig = [1, 1]
-nsteps = 100
-position = [[1, 1]]
+nsteps = 10000
+# The a and b values
+coeffs = [[10, 5]]
 for i in range(nsteps):
 
     # Randomly choose which parameter to move
-    # Use this as an index for the positions list
+    # Use this as an index for the coeffss list
+    # Note that p and p_other will always be
     p = r.randint(2)
     p_other = 1 if p == 0 else 0
 
-    # Propose a new step
-    new_pos = np.random.normal(loc=position[-1][p], scale=sig[p])
+    # Propose a new step in PARAMETER SPACE
+    new_step = np.random.normal(loc=coeffs[-1][p], scale=sig[p])
+
+    # Quickly figure out which is which
+    if p < p_other:
+        a_old, b_old = coeffs[-1][p], coeffs[-1][p_other]
+        a_new, b_new = new_step, coeffs[-1][p_other]
+    else:
+        a_old, b_old = coeffs[-1][p_other], coeffs[-1][p]
+        a_new, b_new = coeffs[-1][p_other], new_step
 
     # Calcualte Chi-Squared for new step, store it
-    chisq_old = utils.chi2(
-                    utils.parabola(xs, position[-1][p], position[-1][p_other]),
-                    ds)
+    chisq_old = utils.chi2(utils.parabola(xs, a_old, b_old), ds)
 
-    chisq_new = utils.chi2(
-                    utils.parabola(xs, new_pos, position[-1][p_other]),
-                    ds)
+    # Calcualte Chi-Squared for new step, store it
+    chisq_new = utils.chi2(utils.parabola(xs, a_new, b_new), ds)
 
     # If chi2_new < chi2_old, accept.
     if chisq_new > chisq_old:
         # This can probably be made shorter.
-        new_position = []
-        new_position[p] = new_pos
-        new_position[p_other] = position[-1][p_other]
-        position.append(new_position)
+        new_coeffs = [0, 0]
+        new_coeffs[p] = [a, b]
+        new_coeffs[p_other] = coeffs[-1][p_other]
+        coeffs.append(new_coeffs)
 
     # Else, generate a random number in [0,1]
     else:
         r_num = r.random()
         # Is this order right?
+
+        #delta_chisq = chisq_old - chisq_new
         delta_chisq = chisq_new - chisq_old
+
         ex = np.exp(-(delta_chisq)/2)
 
         # If exp(-chi2_new/2) < random, reject
         if ex < r_num:
-            position.append(position[-1])
+            coeffs.append(coeffs[-1])
 
         # Else, accept
         else:
-            new_position = []
-            new_position[p] = new_pos
-            new_position[p_other] = position[-1][p_other]
-            position.append(new_position)
+            new_coeffs = [0, 0]
+            new_coeffs[p] = new_pos
+            new_coeffs[p_other] = coeffs[-1][p_other]
+            coeffs.append(new_coeffs)
+
+
+# Plot it
+plt.plot(coeffs, '.k', alpha=0.1)
+plt.show()
+
 
 
 
