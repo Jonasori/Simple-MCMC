@@ -16,7 +16,7 @@ b = 30
 
 # Make a Parabola from a list of xs
 def parabola(xs, a, b):
-    ys = [a*(x**2) + b for x in xs]
+    ys =  [a*(x**2) + b for x in xs]
     return ys
 
 
@@ -40,20 +40,25 @@ plt.show()
 """
 
 
-ms = np.arange(1, 10); len(ms)
-ds = [np.random.normal(loc=m) for m in ms]; len(ds)
+ms = np.arange(1, 10)
+ds = [np.random.normal(loc=m) for m in ms]
 
 
 # Calculate Chi-Squared
-def chi2(model, data):
-    # Takes two lists
-    chisq = 0
-    #[chisq += (d - m)**2 / m for m, d in zip(model, data)]
+def chi2(data, model):
+    # Takes two lists. Is this denominator right?
+    # val = np.sum((data - model)**2 / data**2)
 
-    for m, d in zip(model, data):
-        chisq += (d-m)**2 / m
+    if len(data) != len(model):
+        return "Bad! No Good!"
 
-    return chisq
+    val = 0
+    for i in range(len(data)):
+        val += (data[i] - model[i])**2 / data[i]**2
+
+    return val
+
+chi2([1,2,3,4], [1.1, 2.1, 3.1, 4.1])
 
 # More testing Stuff
 """

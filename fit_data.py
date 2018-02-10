@@ -14,7 +14,7 @@ a = 10
 b = 5
 # Leave C at 0 for the moment so I only have to MCMC over two params
 c = 0
-noise = 100
+noise = 1
 
 # Generate some data
 xs = np.arange(-20, 20)
@@ -32,8 +32,9 @@ plt.show(block=False)
 
 sig = [1, 1]
 nsteps = 10000
-# The a and b values
+# The a and b values [a, b]
 coeffs = [[10, 5]]
+
 for i in range(nsteps):
 
     # Randomly choose which parameter to move
@@ -41,24 +42,32 @@ for i in range(nsteps):
     # Note that p and p_other will always be
     p = r.randint(2)
     p_other = 1 if p == 0 else 0
-
+    p
     # Propose a new step in PARAMETER SPACE
     new_step = np.random.normal(loc=coeffs[-1][p], scale=sig[p])
 
     # Quickly figure out which is which
     if p < p_other:
-        a_old, b_old = coeffs[-1][p], coeffs[-1][p_other]
-        a_new, b_new = new_step, coeffs[-1][p_other]
+        a_old = coeffs[-1][p]
+        b_old = coeffs[-1][p_other]
+        a_new = new_step
+        b_new = coeffs[-1][p_other]
     else:
         a_old, b_old = coeffs[-1][p_other], coeffs[-1][p]
         a_new, b_new = coeffs[-1][p_other], new_step
 
+    b_new
     # Calcualte Chi-Squared for new step, store it
-    chisq_old = utils.chi2(utils.parabola(xs, a_old, b_old), ds)
+    model_old = utils.parabola(xs, a_old, b_old)
+    chisq_old = utils.chi2(ds, model_old)
 
+    chisq_old
     # Calcualte Chi-Squared for new step, store it
-    chisq_new = utils.chi2(utils.parabola(xs, a_new, b_new), ds)
+    model_new = utils.parabola(xs, a_new, b_new)
+    chisq_new = utils.chi2(ds, model_new)
 
+
+    chisq_new
     # If chi2_new < chi2_old, accept.
     if chisq_new > chisq_old:
         # This can probably be made shorter.
@@ -70,29 +79,35 @@ for i in range(nsteps):
     # Else, generate a random number in [0,1]
     else:
         r_num = r.random()
-        # Is this order right?
-
-        #delta_chisq = chisq_old - chisq_new
-        delta_chisq = chisq_new - chisq_old
+        # Is this order right? delta_chisq = chisq_old - chisq_new
+        delta_chisq = (chisq_new - chisq_old)
 
         ex = np.exp(-(delta_chisq)/2)
 
-        # If exp(-chi2_new/2) < random, reject
+        # If exp(-dChi2/2) < random, reject
         if ex < r_num:
             coeffs.append(coeffs[-1])
 
         # Else, accept
         else:
             new_coeffs = [0, 0]
-            new_coeffs[p] = new_pos
+            new_coeffs[p] = [a, b]
             new_coeffs[p_other] = coeffs[-1][p_other]
             coeffs.append(new_coeffs)
 
 
-# Plot it
+# Plot it in parameter space
 plt.plot(coeffs, '.k', alpha=0.1)
-plt.show()
+plt.xlabel('a')
+plt.ylabel('b')
+plt.show(block=False)
 
+# Plot the resulting parabola
+"""
+ys = utils.parabola(xs, coeffs[-1][0], coeffs[-1][1])
+plt.plot(xs, ys)
+plt.show(block=False)
+"""
 
 
 
