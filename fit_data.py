@@ -14,11 +14,12 @@ a = 10
 b = 5
 # Leave C at 0 for the moment so I only have to MCMC over two params
 c = 0
-noise = 1
+# Add some noise
+sigma = 1
 
 # Generate some data
 xs = np.arange(-20, 20)
-ds = utils.generate_fake_data(xs, a, b, noise)
+ds = utils.generate_fake_data(xs, a, b, sigma)
 
 # Test plot if you want
 """
@@ -30,7 +31,6 @@ plt.show(block=False)
 # Start the actual MCMC
 
 
-sig = [1, 1]
 nsteps = 10000
 # The a and b values [a, b]
 coeffs = [[10, 5]]
@@ -42,9 +42,9 @@ for i in range(nsteps):
     # Note that p and p_other will always be
     p = r.randint(2)
     p_other = 1 if p == 0 else 0
-    p
+    p, p_other
     # Propose a new step in PARAMETER SPACE
-    new_step = np.random.normal(loc=coeffs[-1][p], scale=sig[p])
+    new_step = np.random.normal(loc=coeffs[-1][p], scale=sigma)
 
     # Quickly figure out which is which
     if p < p_other:
@@ -53,23 +53,23 @@ for i in range(nsteps):
         a_new = new_step
         b_new = coeffs[-1][p_other]
     else:
-        a_old, b_old = coeffs[-1][p_other], coeffs[-1][p]
-        a_new, b_new = coeffs[-1][p_other], new_step
+        a_old = coeffs[-1][p_other]
+        b_old = coeffs[-1][p]
+        a_new = coeffs[-1][p_other]
+        b_new = new_step
 
-    b_new
+    b_old
     # Calcualte Chi-Squared for new step, store it
     model_old = utils.parabola(xs, a_old, b_old)
-    chisq_old = utils.chi2(ds, model_old)
+    chisq_old = utils.chi2(ds, model_old, sigma)
 
-    chisq_old
     # Calcualte Chi-Squared for new step, store it
     model_new = utils.parabola(xs, a_new, b_new)
-    chisq_new = utils.chi2(ds, model_new)
+    chisq_new = utils.chi2(ds, model_new, sigma)
 
-
-    chisq_new
     # If chi2_new < chi2_old, accept.
-    if chisq_new > chisq_old:
+    # For some reason, chisq_ are length 1 arrays.
+    if chisq_new[0] > chisq_old[0]:
         # This can probably be made shorter.
         new_coeffs = [0, 0]
         new_coeffs[p] = [a, b]
@@ -83,9 +83,9 @@ for i in range(nsteps):
         delta_chisq = (chisq_new - chisq_old)
 
         ex = np.exp(-(delta_chisq)/2)
-
-        # If exp(-dChi2/2) < random, reject
-        if ex < r_num:
+        # If exp(-dChi2/2) < random, reject.
+        # ex is also a length 1 array. Weird.
+        if ex[0] < r_num:
             coeffs.append(coeffs[-1])
 
         # Else, accept
