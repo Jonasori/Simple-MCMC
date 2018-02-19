@@ -7,108 +7,94 @@ Develop a simple MCMC code to fit to data generated in utils.py
 import numpy as np
 import numpy.random as r
 import matplotlib.pyplot as plt
-
 import utils
 
-a = 10
-b = 5
-# Leave C at 0 for the moment so I only have to MCMC over two params
-c = 0
+# Choose a starting point
+a_init = 10
+b_init = 5
+
 # Add some noise
-sigma = 1
+sigma = 100
 
 # Generate some data
 xs = np.arange(-20, 20)
-ds = utils.generate_fake_data(xs, a, b, sigma)
+ds = utils.generate_fake_data(xs, a_init, b_init, sigma)
 
-# Test plot if you want
-"""
-plt.plot(xs, ds)
-plt.show(block=False)
-#"""
+# Specify priors
+priors_a = range
+priors_b = [-20, 20]
 
 
 # Start the actual MCMC
 
-
 nsteps = 10000
 # The a and b values [a, b]
-coeffs = [[10, 5]]
+a_vals = np.zeros(nsteps)
+b_vals = np.zeros(nsteps)
+chisqs = np.zeros(nsteps)
 
-for i in range(nsteps):
+# Give a starting point and calculate that initial chi2
+a_vals[0], b_vals[0] = a_init, b_init
+first_model = utils.parabola(xs, a_init, b_init)
+chisqs[0] = utils.chi2(ds, first_model, sigma)
+
+
+for i in range(1, nsteps):
 
     # Randomly choose which parameter to move
-    # Use this as an index for the coeffss list
-    # Note that p and p_other will always be
-    p = r.randint(2)
-    p_other = 1 if p == 0 else 0
-    p, p_other
-    # Propose a new step in PARAMETER SPACE
-    new_step = np.random.normal(loc=coeffs[-1][p], scale=sigma)
-
-    # Quickly figure out which is which
-    if p < p_other:
-        a_old = coeffs[-1][p]
-        b_old = coeffs[-1][p_other]
-        a_new = new_step
-        b_new = coeffs[-1][p_other]
+    # Propose a new step: choose a dimension to move in
+    choice = r.choice(['a', 'b'], 1)
+    if choice == 'a':
+        a_new = np.random.normal(loc=a_vals[i-1], scale=sigma)
+        new_step = np.array([a_new, b_vals[i-1]])
     else:
-        a_old = coeffs[-1][p_other]
-        b_old = coeffs[-1][p]
-        a_new = coeffs[-1][p_other]
-        b_new = new_step
+        b_new = np.random.normal(loc=b_vals[i-1], scale=sigma)
+        new_step = np.array([a_vals[i-1], b_new])
 
-    b_old
-    # Calcualte Chi-Squared for new step, store it
-    model_old = utils.parabola(xs, a_old, b_old)
-    chisq_old = utils.chi2(ds, model_old, sigma)
-
-    # Calcualte Chi-Squared for new step, store it
-    model_new = utils.parabola(xs, a_new, b_new)
+    # Calculate Chi-Squared for new step, store it
+    model_new = utils.parabola(xs, new_step[0], new_step[1])
     chisq_new = utils.chi2(ds, model_new, sigma)
 
-    # If chi2_new < chi2_old, accept.
-    # For some reason, chisq_ are length 1 arrays.
-    if chisq_new[0] > chisq_old[0]:
-        # This can probably be made shorter.
-        new_coeffs = [0, 0]
-        new_coeffs[p] = [a, b]
-        new_coeffs[p_other] = coeffs[-1][p_other]
-        coeffs.append(new_coeffs)
+    # Make sure the new step doesn't violate the priors:
+    if utils.is_valid_step(new_step, priors_a, priors_b):
 
-    # Else, generate a random number in [0,1]
-    else:
-        r_num = r.random()
-        # Is this order right? delta_chisq = chisq_old - chisq_new
-        delta_chisq = (chisq_new - chisq_old)
+        # If the new one is an improvement, take it.
+        if chisq_new > chisqs[i-1]:
+            a_vals[i], b_vals[i] = new_step[0], new_step[1]
+            chisqs[i] = chisq_new
 
-        ex = np.exp(-(delta_chisq)/2)
-        # If exp(-dChi2/2) < random, reject.
-        # ex is also a length 1 array. Weird.
-        if ex[0] < r_num:
-            coeffs.append(coeffs[-1])
-
-        # Else, accept
+        # Otherwise, generate a random number in [0,1]
         else:
-            new_coeffs = [0, 0]
-            new_coeffs[p] = [a, b]
-            new_coeffs[p_other] = coeffs[-1][p_other]
-            coeffs.append(new_coeffs)
+            r_num = r.random()
+            # delta_chisq = chisq_old - chisq_new from eqn(13) of Ford 2005
+            delta_chisq = (chisqs[i-1] - chisq_new)
+            alpha = np.exp(delta_chisq/2)
+
+            # If exp(-dChi2/2) < random, reject.
+            # It feels weird that we reject if ex is smaller.
+            if alpha < r_num:
+                a_vals[i], b_vals[i] = a_vals[i-1], b_vals[i-1]
+                chisqs[i] = chisqs[i-1]
+
+            # Else, accept
+            else:
+                a_vals[i], b_vals[i] = new_step[0], new_step[1]
+                chisqs[i] = chisq_new
 
 
 # Plot it in parameter space
-plt.plot(coeffs, '.k', alpha=0.1)
+plt.plot(a_vals, b_vals, '.k', alpha=0.1)
 plt.xlabel('a')
 plt.ylabel('b')
 plt.show(block=False)
 
 # Plot the resulting parabola
 """
+best_fit_index =
 ys = utils.parabola(xs, coeffs[-1][0], coeffs[-1][1])
 plt.plot(xs, ys)
 plt.show(block=False)
 """
-
 
 
 
