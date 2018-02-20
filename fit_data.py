@@ -28,6 +28,8 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
     # priors_a, priors_b: bounds on where the walkers can go
     # sigma: noise level
 
+    # Test
+    
     # Initialize the arrays
     a_vals = np.zeros(nsteps)
     b_vals = np.zeros(nsteps)
