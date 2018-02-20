@@ -86,18 +86,20 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
         else:
             r_num = np.random.random()
             # delta_chisq = chisq_old - chisq_new from eqn(13) of Ford 2005
-            delta_chisq = (chisqs[i-1] - chisq_new)
+            delta_chisq = (chisqs[-1] - chisq_new)
             alpha = np.exp(delta_chisq/2)
 
             # If alpha < random, reject this step.
             # It feels weird that we reject if alpha is smaller.
             if alpha < r_num:
-                a_vals[i], b_vals[i] = a_vals[i-1], b_vals[i-1]
+                a_vals[i].append(a_vals[-1])
+                b_vals[i].append(b_vals[-1])
                 chisqs[i] = chisqs[i-1]
 
             # If alpha > random, accept the new step.
             else:
-                a_vals[i], b_vals[i] = new_step[0], new_step[1]
+                a_vals[i].append(new_step[0])
+                b_vals[i].append(new_step[1])
                 chisqs[i] = chisq_new
 
         # Bump the counter
