@@ -28,20 +28,22 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
     # priors_a, priors_b: bounds on where the walkers can go
     # sigma: noise level
 
-    # Test
-    
     # Initialize the arrays
+    """
     a_vals = np.zeros(nsteps)
     b_vals = np.zeros(nsteps)
     chisqs = np.zeros(nsteps)
+    """
 
     # Give a starting point and calculate that initial chi2
     initial_a = np.random.uniform(priors_a[0], priors_a[1])
     initial_b = np.random.uniform(priors_b[0], priors_b[1])
-    a_vals[0], b_vals[0] = initial_a, initial_b
+    # a_vals[0], b_vals[0] = initial_a, initial_b
+
+    a_vals, b_vals = [initial_a], [initial_b]
 
     first_model = parabola(xs, initial_a, initial_b)
-    chisqs[0] = chi2(ys, first_model, sigma)
+    chisqs = [chi2(ys, first_model, sigma)]
 
     # Start the loop!
     i = 1
@@ -52,18 +54,18 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
         print choice
         if choice == 'a':
             # a_new = np.random.normal(loc=a_vals[i-1], scale=sigma)
-            a_new = truncated_random_normal(a_vals[i-1],
+            a_new = truncated_random_normal(a_vals[-1],
                                             sigma, priors_a[0],
                                             priors_a[1])[0]
 
-            new_step = np.array([a_new, b_vals[i-1]])
+            new_step = np.array([a_new, b_vals[-1]])
         else:
             # b_new = np.random.normal(loc=b_vals[i-1], scale=sigma)
-            b_new = truncated_random_normal(b_vals[i-1],
+            b_new = truncated_random_normal(b_vals[-1],
                                             sigma, priors_b[0],
                                             priors_b[1])[0]
 
-            new_step = np.array([a_vals[i-1], b_new])
+            new_step = np.array([a_vals[-1], b_new])
 
         print new_step
         # Calculate Chi-Squared for that new step
@@ -76,7 +78,8 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
 
         # If the new one is an improvement, take it.
         if chisq_new < chisqs[i-1]:
-            a_vals[i], b_vals[i] = new_step[0], new_step[1]
+            a_vals[i].append(new_step[0])
+            b_vals[i].append(new_step[1])
             chisqs[i] = chisq_new
 
         # Otherwise, generate a random number in [0,1]
