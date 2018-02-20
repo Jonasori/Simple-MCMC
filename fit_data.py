@@ -9,10 +9,28 @@ import matplotlib.pyplot as plt
 from utils import parabola, generate_fake_data, chi2
 from utils import truncated_random_normal
 
+
+
+
+# Calculate Chi-Squared
+def chi2(data, model, sigma):
+    # Takes two lists.
+    if len(data) != len(model):
+        return "Bad! No Good!"
+
+    c = 0
+    for i in range(len(data)):
+        c += (data[i]-model[i])**2 * sigma**(-2)
+        # print data[i], model[i], '\t', (data[i]-model[i])**2/sigma
+    return c
+
+
+
+
 # Choose a starting point
 true_a = 10.1
 true_b = 5.1
-true_sigma = 100
+true_sigma = 10
 # Generate some data
 xs = np.arange(-20, 20)
 ys = generate_fake_data(xs, true_a, true_b, true_sigma)
@@ -22,7 +40,7 @@ priors_a = [-50, 50]
 priors_b = [-50, 50]
 
 
-def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
+def mcmc(xs, ys, priors_a, priors_b, sigma_a, sigma_b, sigma_data, nsteps=100000):
     # nsteps: how many steps the walkers should take
     # xs, ys: input data (lists/numpy arrays)
     # priors_a, priors_b: bounds on where the walkers can go
@@ -43,7 +61,7 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
     a_vals, b_vals = [initial_a], [initial_b]
 
     first_model = parabola(xs, initial_a, initial_b)
-    chisqs = [chi2(ys, first_model, sigma)]
+    chisqs = [chi2(ys, first_model, sigma_data)]
 
     # Initialize the acceptance/rejection counters:
     total_accepted = 0.
@@ -60,14 +78,14 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
         if choice == 'a':
             # a_new = np.random.normal(loc=a_vals[i-1], scale=sigma)
             a_new = truncated_random_normal(a_vals[-1],
-                                            sigma, priors_a[0],
+                                            sigma_a, priors_a[0],
                                             priors_a[1])[0]
 
             new_step = np.array([a_new, b_vals[-1]])
         else:
             # b_new = np.random.normal(loc=b_vals[i-1], scale=sigma)
             b_new = truncated_random_normal(b_vals[-1],
-                                            sigma, priors_b[0],
+                                            sigma_b, priors_b[0],
                                             priors_b[1])[0]
 
             new_step = np.array([a_vals[-1], b_new])
@@ -75,7 +93,7 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
         print "Proposed new step: ", new_step
         # Calculate Chi-Squared for that new step
         model_new = parabola(xs, new_step[0], new_step[1])
-        chisq_new = chi2(ys, model_new, sigma)
+        chisq_new = chi2(ys, model_new, sigma_data)
 
         # Make sure the new step doesn't violate the priors
         # Note that if this fails, the loop starts over the with same i value
@@ -144,19 +162,25 @@ def plot_whatever(xs, ys):
 
 # Plot it in parameter space
 def plot_param_walk(run_output):
-    a_vals = run_output['a_vals_visited']
-    b_vals = run_output['b_vals_visited']
-    plt.plot(a_vals, b_vals, '.k', alpha=0.1)
+    a_vals = run_output['a_vals_visited'][10000:]
+    b_vals = run_output['b_vals_visited'][10000:]
+    plt.plot(a_vals, b_vals, '.k', alpha=0.01)
     plt.xlabel('a')
     plt.ylabel('b')
     plt.show(block=False)
 
 
 # Plot the resulting parabola
-def plot_best_fit_model(chisqs):
-    best_fit_index = chisqs.index(min(chisqs))
-    ys = parabola(xs, coeffs[-1][0], coeffs[-1][1])
-    plt.plot(xs, ys)
+def plot_best_fit_model(run_output):
+    a_vals = run_output['a_vals_visited']
+    b_vals = run_output['b_vals_visited']
+    chisqs = run_output['chi2_vals']
+
+    min_vals = np.where(run_output['chi2_vals'] == np.min(run_output['chi2_vals']))
+
+    model_ys = parabola(xs, a_vals[min_vals[0][0]], b_vals[min_vals[1][0]])
+    plt.plot(xs, model_ys, '-og')
+    plt.plot(xs, ys, '-or')
     plt.show(block=False)
 
 
