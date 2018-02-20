@@ -45,10 +45,15 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
     first_model = parabola(xs, initial_a, initial_b)
     chisqs = [chi2(ys, first_model, sigma)]
 
+    # Initialize the acceptance/rejection counters:
+    total_accepted = 0.
+    total_rejected = 0.
+
     # Start the loop!
     i = 1
     while i < nsteps:
         print i
+        print "Last step: ", a_vals[-1], b_vals[-1]
         # Propose a new step
         choice = np.random.choice(['a', 'b'], 1)
         print choice
@@ -67,7 +72,7 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
 
             new_step = np.array([a_vals[-1], b_new])
 
-        print new_step
+        print "Proposed new step: ", new_step
         # Calculate Chi-Squared for that new step
         model_new = parabola(xs, new_step[0], new_step[1])
         chisq_new = chi2(ys, model_new, sigma)
@@ -77,10 +82,12 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
         # if is_valid_step(new_step, priors_a) and is_valid_step(new_step, priors_b):
 
         # If the new one is an improvement, take it.
-        if chisq_new < chisqs[i-1]:
-            a_vals[i].append(new_step[0])
-            b_vals[i].append(new_step[1])
-            chisqs[i] = chisq_new
+        if chisq_new < chisqs[-1]:
+            a_vals.append(new_step[0])
+            b_vals.append(new_step[1])
+            chisqs.append(chisq_new)
+            total_accepted += 1.
+            print "Accepted"
 
         # Otherwise, generate a random number in [0,1]
         else:
@@ -92,28 +99,36 @@ def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
             # If alpha < random, reject this step.
             # It feels weird that we reject if alpha is smaller.
             if alpha < r_num:
-                a_vals[i].append(a_vals[-1])
-                b_vals[i].append(b_vals[-1])
-                chisqs[i] = chisqs[i-1]
+                a_vals.append(a_vals[-1])
+                b_vals.append(b_vals[-1])
+                chisqs.append(chisqs[-1])
+                print "Rejected"
+                total_rejected += 1.
 
             # If alpha > random, accept the new step.
             else:
-                a_vals[i].append(new_step[0])
-                b_vals[i].append(new_step[1])
-                chisqs[i] = chisq_new
+                a_vals.append(new_step[0])
+                b_vals.append(new_step[1])
+                chisqs.append(chisq_new)
+                print "Accepted by dumb luck"
+                total_accepted += 1.
 
         # Bump the counter
         i += 1
-
+        print "New step: ", a_vals[-1], b_vals[-1]
         print '\n\n'
 
     # Final outputs
     # best_fit_index = chisqs.index(min(chisqs))
     # best_fit_vals = [a_vals[best_fit_index], b_vals[best_fit_index]]
+    acceptance_fraction = total_accepted/(total_accepted + total_rejected)
+    print "Final acceptance fraction: ", acceptance_fraction
+
     final_output = {
                     'a_vals_visited': a_vals,
                     'b_vals_visited': b_vals,
                     'chi2_vals': chisqs,
+                    'acceptance_fraction': acceptance_fraction
                     }
 
     # 'best_fit_vals': best_fit_vals
@@ -128,7 +143,9 @@ def plot_whatever(xs, ys):
 
 
 # Plot it in parameter space
-def plot_param_walk(a_vals, b_vals):
+def plot_param_walk(run_output):
+    a_vals = run_output['a_vals_visited']
+    b_vals = run_output['b_vals_visited']
     plt.plot(a_vals, b_vals, '.k', alpha=0.1)
     plt.xlabel('a')
     plt.ylabel('b')
