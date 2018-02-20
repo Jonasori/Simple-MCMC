@@ -41,11 +41,13 @@ def chi2(data, model, sigma):
     if len(data) != len(model):
         return "Bad! No Good!"
 
-    val = np.sum((np.array(data) - np.array(model))**2 / sigma**2)
-    return val
+    c = 0
+    for i in range(len(data)):
+        c += (data[i]-model[i])**2 * sigma**(-2)
+        # print data[i], model[i], '\t', (data[i]-model[i])**2/sigma
+        print c
 
-
-chi2([1, 2, 3, 4], [1.1, 2.1, 3.1, 4.1], 0.1)
+    return c
 
 
 # Check if a step is within the priors

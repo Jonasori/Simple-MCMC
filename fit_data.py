@@ -9,10 +9,28 @@ import matplotlib.pyplot as plt
 from utils import parabola, generate_fake_data, chi2
 from utils import truncated_random_normal
 
+
+
+
+# Calculate Chi-Squared
+def chi2(data, model, sigma):
+    # Takes two lists.
+    if len(data) != len(model):
+        return "Bad! No Good!"
+
+    c = 0
+    for i in range(len(data)):
+        c += (data[i]-model[i])**2 * sigma**(-2)
+        # print data[i], model[i], '\t', (data[i]-model[i])**2/sigma
+    return c
+
+
+
+
 # Choose a starting point
 true_a = 10.1
 true_b = 5.1
-true_sigma = 100
+true_sigma = 10
 # Generate some data
 xs = np.arange(-20, 20)
 ys = generate_fake_data(xs, true_a, true_b, true_sigma)
@@ -22,91 +40,113 @@ priors_a = [-50, 50]
 priors_b = [-50, 50]
 
 
-def mcmc(xs, ys, priors_a, priors_b, sigma=1, nsteps=1000):
+def mcmc(xs, ys, priors_a, priors_b, sigma_a, sigma_b, sigma_data, nsteps=100000):
     # nsteps: how many steps the walkers should take
     # xs, ys: input data (lists/numpy arrays)
     # priors_a, priors_b: bounds on where the walkers can go
     # sigma: noise level
 
     # Initialize the arrays
+    """
     a_vals = np.zeros(nsteps)
     b_vals = np.zeros(nsteps)
     chisqs = np.zeros(nsteps)
+    """
 
     # Give a starting point and calculate that initial chi2
     initial_a = np.random.uniform(priors_a[0], priors_a[1])
     initial_b = np.random.uniform(priors_b[0], priors_b[1])
-    a_vals[0], b_vals[0] = initial_a, initial_b
+    # a_vals[0], b_vals[0] = initial_a, initial_b
+
+    a_vals, b_vals = [initial_a], [initial_b]
 
     first_model = parabola(xs, initial_a, initial_b)
-    chisqs[0] = chi2(ys, first_model, sigma)
+    chisqs = [chi2(ys, first_model, sigma_data)]
+
+    # Initialize the acceptance/rejection counters:
+    total_accepted = 0.
+    total_rejected = 0.
 
     # Start the loop!
     i = 1
     while i < nsteps:
         print i
+        print "Last step: ", a_vals[-1], b_vals[-1]
         # Propose a new step
         choice = np.random.choice(['a', 'b'], 1)
         print choice
         if choice == 'a':
             # a_new = np.random.normal(loc=a_vals[i-1], scale=sigma)
-            a_new = truncated_random_normal(a_vals[i-1],
-                                            sigma, priors_a[0],
+            a_new = truncated_random_normal(a_vals[-1],
+                                            sigma_a, priors_a[0],
                                             priors_a[1])[0]
 
-            new_step = np.array([a_new, b_vals[i-1]])
+            new_step = np.array([a_new, b_vals[-1]])
         else:
             # b_new = np.random.normal(loc=b_vals[i-1], scale=sigma)
-            b_new = truncated_random_normal(b_vals[i-1],
-                                            sigma, priors_b[0],
+            b_new = truncated_random_normal(b_vals[-1],
+                                            sigma_b, priors_b[0],
                                             priors_b[1])[0]
 
-            new_step = np.array([a_vals[i-1], b_new])
+            new_step = np.array([a_vals[-1], b_new])
 
-        print new_step
+        print "Proposed new step: ", new_step
         # Calculate Chi-Squared for that new step
         model_new = parabola(xs, new_step[0], new_step[1])
-        chisq_new = chi2(ys, model_new, sigma)
+        chisq_new = chi2(ys, model_new, sigma_data)
 
         # Make sure the new step doesn't violate the priors
         # Note that if this fails, the loop starts over the with same i value
         # if is_valid_step(new_step, priors_a) and is_valid_step(new_step, priors_b):
 
         # If the new one is an improvement, take it.
-        if chisq_new < chisqs[i-1]:
-            a_vals[i], b_vals[i] = new_step[0], new_step[1]
-            chisqs[i] = chisq_new
+        if chisq_new < chisqs[-1]:
+            a_vals.append(new_step[0])
+            b_vals.append(new_step[1])
+            chisqs.append(chisq_new)
+            total_accepted += 1.
+            print "Accepted"
 
         # Otherwise, generate a random number in [0,1]
         else:
             r_num = np.random.random()
             # delta_chisq = chisq_old - chisq_new from eqn(13) of Ford 2005
-            delta_chisq = (chisqs[i-1] - chisq_new)
+            delta_chisq = (chisqs[-1] - chisq_new)
             alpha = np.exp(delta_chisq/2)
 
             # If alpha < random, reject this step.
             # It feels weird that we reject if alpha is smaller.
             if alpha < r_num:
-                a_vals[i], b_vals[i] = a_vals[i-1], b_vals[i-1]
-                chisqs[i] = chisqs[i-1]
+                a_vals.append(a_vals[-1])
+                b_vals.append(b_vals[-1])
+                chisqs.append(chisqs[-1])
+                print "Rejected"
+                total_rejected += 1.
 
             # If alpha > random, accept the new step.
             else:
-                a_vals[i], b_vals[i] = new_step[0], new_step[1]
-                chisqs[i] = chisq_new
+                a_vals.append(new_step[0])
+                b_vals.append(new_step[1])
+                chisqs.append(chisq_new)
+                print "Accepted by dumb luck"
+                total_accepted += 1.
 
         # Bump the counter
         i += 1
-
+        print "New step: ", a_vals[-1], b_vals[-1]
         print '\n\n'
 
     # Final outputs
     # best_fit_index = chisqs.index(min(chisqs))
     # best_fit_vals = [a_vals[best_fit_index], b_vals[best_fit_index]]
+    acceptance_fraction = total_accepted/(total_accepted + total_rejected)
+    print "Final acceptance fraction: ", acceptance_fraction
+
     final_output = {
                     'a_vals_visited': a_vals,
                     'b_vals_visited': b_vals,
                     'chi2_vals': chisqs,
+                    'acceptance_fraction': acceptance_fraction
                     }
 
     # 'best_fit_vals': best_fit_vals
@@ -121,18 +161,26 @@ def plot_whatever(xs, ys):
 
 
 # Plot it in parameter space
-def plot_param_walk(a_vals, b_vals):
-    plt.plot(a_vals, b_vals, '.k', alpha=0.1)
+def plot_param_walk(run_output):
+    a_vals = run_output['a_vals_visited'][10000:]
+    b_vals = run_output['b_vals_visited'][10000:]
+    plt.plot(a_vals, b_vals, '.k', alpha=0.01)
     plt.xlabel('a')
     plt.ylabel('b')
     plt.show(block=False)
 
 
 # Plot the resulting parabola
-def plot_best_fit_model(chisqs):
-    best_fit_index = chisqs.index(min(chisqs))
-    ys = parabola(xs, coeffs[-1][0], coeffs[-1][1])
-    plt.plot(xs, ys)
+def plot_best_fit_model(run_output):
+    a_vals = run_output['a_vals_visited']
+    b_vals = run_output['b_vals_visited']
+    chisqs = run_output['chi2_vals']
+
+    min_vals = np.where(run_output['chi2_vals'] == np.min(run_output['chi2_vals']))
+
+    model_ys = parabola(xs, a_vals[min_vals[0][0]], b_vals[min_vals[1][0]])
+    plt.plot(xs, model_ys, '-og')
+    plt.plot(xs, ys, '-or')
     plt.show(block=False)
 
 
