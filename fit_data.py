@@ -12,7 +12,28 @@ from utils import truncated_random_normal
 # Acceptance fractions independently
 
 
-# Calculate Chi-Squared
+# Globals
+true_a = 1
+true_b = 50.1
+true_sigma = 10
+# Generate some data
+xs = np.arange(-20, 20)
+ys = generate_fake_data(xs, true_a, true_b, true_sigma)
+
+# Specify priors
+priors_a = [-100, 100]
+priors_b = [-100, 100]
+
+
+
+
+
+
+
+
+
+
+# Helper file to calculate Chi-Squared
 def chi2(data, model, sigma):
     # Takes two lists.
     if len(data) != len(model):
@@ -25,19 +46,6 @@ def chi2(data, model, sigma):
     return c
 
 
-
-
-# Choose a starting point
-true_a = 1
-true_b = 50.1
-true_sigma = 10
-# Generate some data
-xs = np.arange(-20, 20)
-ys = generate_fake_data(xs, true_a, true_b, true_sigma)
-
-# Specify priors
-priors_a = [-100, 100]
-priors_b = [-100, 100]
 
 
 def mcmc(xs, ys, priors_a, priors_b, sigma_a, sigma_b, sigma_data, nsteps=100000):
@@ -147,6 +155,13 @@ def mcmc(xs, ys, priors_a, priors_b, sigma_a, sigma_b, sigma_data, nsteps=100000
                     }
 
     return final_output
+
+
+# o = mcmc(xs, ys, priors_a, priors_b, 0.5, 1, true_sigma, 10000)
+
+
+
+
 
 
 # A generic plotter
