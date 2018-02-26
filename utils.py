@@ -51,6 +51,7 @@ def chi2(data, model, sigma):
 
 
 # Check if a step is within the priors
+# This is now redundant thanks to the truncated_random_normal function
 def is_valid_step(step, priors):
     # Each argument is a tuple
     step_ok = priors[0] < step[0] and step[0] < priors[1]
